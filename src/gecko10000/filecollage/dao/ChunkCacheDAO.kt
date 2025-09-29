@@ -52,15 +52,16 @@ class ChunkCacheDAO : KoinComponent {
 
     private fun evictOldestChunk() {
         val oldest = findOldestChunk()
-        log.info("Evicting cached chunk {} because cache is full.", oldest.key.id)
         // chunk doesn't need to be saved.
         if (!oldest.value.dirty) {
             // and doesn't need to be removed, as there's already a job for it.
             if (!oldest.value.uploading) {
+                log.debug("Removing clean cached chunk {} because cache is full.", oldest.key.id)
                 cache.remove(oldest.key)
             }
             return
         }
+        log.debug("Evicting dirty cached chunk {} because cache is full.", oldest.key.id)
         oldest.value.dirty = false // set it to be non-dirty temporarily so it's not uploaded over and over again
         coroutineScope.launch {
             oldest.value.uploading = true
@@ -86,7 +87,7 @@ class ChunkCacheDAO : KoinComponent {
 
     suspend fun getChunk(fileChunk: FileChunk): CachedChunk {
         val existingChunk = cache[fileChunk]
-        log.info("Got cached {} for {}", existingChunk?.id ?: "N/A", fileChunk.id)
+        log.debug("Got cached {} for {}", existingChunk?.id ?: "N/A", fileChunk.id)
         var cachedChunk = existingChunk
         if (cachedChunk == null) {
             if (fileChunk.remoteChunkId == null) {

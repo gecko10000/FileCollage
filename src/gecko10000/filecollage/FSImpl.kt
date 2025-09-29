@@ -232,6 +232,7 @@ class FSImpl : FuseStubFS(), KoinComponent {
     }
 
     override fun unlink(path: String): Int {
+        // TODO: remove chunks from cache
         try {
             log.debug("Unlinking {}", path)
             val node = directoryDAO.lookupNode(path)
