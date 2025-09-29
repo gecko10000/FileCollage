@@ -9,7 +9,6 @@ import dev.inmo.tgbotapi.requests.abstracts.asMultipartFile
 import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.model.cache.CachedChunk
 import gecko10000.filecollage.model.index.FileChunk
-import gecko10000.filecollage.util.Constants
 import gecko10000.telefuse.config.JsonConfigWrapper
 import io.ktor.client.plugins.*
 import org.koin.core.component.KoinComponent
@@ -35,7 +34,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
     }
 
     override suspend fun uploadFileChunk(fileChunk: FileChunk, cachedChunk: CachedChunk): FileId {
-        val bytes = if (cachedChunk.size == Constants.CHUNK_MAX_SIZE) cachedChunk.bytes
+        val bytes = if (cachedChunk.size == getMaxChunkSize()) cachedChunk.bytes
         else cachedChunk.bytes.copyOf(cachedChunk.size)
         val response = bot.sendDocument(
             config.channelId,
@@ -44,6 +43,10 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
             )
         )
         return response.content.media.fileId.fileId
+    }
+
+    override fun getMaxChunkSize(): Int {
+        return 20 * 1024 * 1024
     }
 
 }

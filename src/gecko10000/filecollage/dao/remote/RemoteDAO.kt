@@ -9,5 +9,5 @@ interface RemoteDAO {
 
     suspend fun downloadFileChunk(fileChunk: FileChunk): ByteArray
     suspend fun uploadFileChunk(fileChunk: FileChunk, cachedChunk: CachedChunk): FileId
-
+    fun getMaxChunkSize(): Int
 }

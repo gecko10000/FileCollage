@@ -90,10 +90,10 @@ class ChunkCacheDAO : KoinComponent {
         var cachedChunk = existingChunk
         if (cachedChunk == null) {
             if (fileChunk.remoteChunkId == null) {
-                cachedChunk = CachedChunk.empty()
+                cachedChunk = CachedChunk.empty(remoteDAO.getMaxChunkSize())
             } else {
                 val bytes = remoteDAO.downloadFileChunk(fileChunk)
-                cachedChunk = CachedChunk.of(bytes)
+                cachedChunk = CachedChunk.of(bytes, remoteDAO.getMaxChunkSize())
             }
         }
         touchChunk(fileChunk, cachedChunk)
