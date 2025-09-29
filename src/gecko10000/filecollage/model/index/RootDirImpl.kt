@@ -9,4 +9,6 @@ data class RootDirImpl(
     override var uid: Long,
     override var gid: Long,
     override var children: MutableMap<String, Node>,
+    override var accessTime: Time,
+    override var modificationTime: Time,
 ) : RootDir()

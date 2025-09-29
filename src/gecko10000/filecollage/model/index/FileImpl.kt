@@ -16,4 +16,6 @@ data class FileImpl(
     override var gid: Long,
     override var fileChunks: MutableList<FileChunk> = mutableListOf(),
     override var size: Long = 0,
+    override var accessTime: Time,
+    override var modificationTime: Time,
 ) : File()

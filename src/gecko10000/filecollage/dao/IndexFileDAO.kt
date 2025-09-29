@@ -4,6 +4,7 @@ import gecko10000.filecollage.FSImpl
 import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.model.index.RootDir
 import gecko10000.filecollage.model.index.RootDirImpl
+import gecko10000.filecollage.model.index.Time
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
 import jnr.posix.FileStat
@@ -38,7 +39,9 @@ class IndexFileDAO : KoinComponent {
         permissions = ALL_PERMS_DIR or FileStat.S_IFDIR,
         uid = fsImpl.context.uid.longValue(),
         gid = fsImpl.context.gid.longValue(),
-        children = mutableMapOf()
+        children = mutableMapOf(),
+        accessTime = Time.now(),
+        modificationTime = Time.now(),
     )
         private set
 

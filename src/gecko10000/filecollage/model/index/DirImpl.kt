@@ -9,4 +9,6 @@ data class DirImpl(
     override var uid: Long,
     override var gid: Long,
     override var children: MutableMap<String, Node> = mutableMapOf(),
+    override var accessTime: Time,
+    override var modificationTime: Time,
 ) : Dir()

@@ -2,10 +2,7 @@ package gecko10000.filecollage
 
 import gecko10000.filecollage.dao.DirectoryDAO
 import gecko10000.filecollage.dao.FileDAO
-import gecko10000.filecollage.model.index.Dir
-import gecko10000.filecollage.model.index.DirImpl
-import gecko10000.filecollage.model.index.File
-import gecko10000.filecollage.model.index.FileImpl
+import gecko10000.filecollage.model.index.*
 import gecko10000.filecollage.util.PathUtil
 import gecko10000.filecollage.util.log
 import jnr.ffi.Pointer
@@ -49,6 +46,8 @@ class FSImpl : FuseStubFS(), KoinComponent {
                 permissions = permissions.toInt(),
                 uid = this.context.uid.longValue(),
                 gid = this.context.gid.longValue(),
+                accessTime = Time.now(),
+                modificationTime = Time.now(),
             )
             directoryDAO.addNode(parentDir, newFile)
             return 0
@@ -72,6 +71,10 @@ class FSImpl : FuseStubFS(), KoinComponent {
             }
             stat.st_gid.set(node.gid)
             stat.st_uid.set(node.uid)
+            stat.st_atim.tv_sec.set(node.accessTime.seconds)
+            stat.st_atim.tv_nsec.set(node.accessTime.nanoseconds)
+            stat.st_mtim.tv_sec.set(node.modificationTime.seconds)
+            stat.st_mtim.tv_nsec.set(node.modificationTime.nanoseconds)
             return 0
         } catch (ex: Exception) {
             ex.printStackTrace()
@@ -97,6 +100,8 @@ class FSImpl : FuseStubFS(), KoinComponent {
                 permissions = permissions.toInt() or FileStat.S_IFDIR,
                 gid = this.context.gid.longValue(),
                 uid = this.context.uid.longValue(),
+                accessTime = Time.now(),
+                modificationTime = Time.now(),
             )
             directoryDAO.addNode(parent, newDir)
             return 0
@@ -291,13 +296,10 @@ class FSImpl : FuseStubFS(), KoinComponent {
                 log.debug("File {} does not exist, could not utimens", path)
                 return -ErrorCodes.ENOENT()
             }
-            /*val accessTime = Time.fromTimespec(timespec[0])
+            val accessTime = Time.fromTimespec(timespec[0])
             val modificationTime = Time.fromTimespec(timespec[1])
-            val newFileInfo = when (fileInfo) {
-                is DirInfo -> fileInfo.copy(accessTime = accessTime, modificationTime = modificationTime)
-                is FileInfo -> fileInfo.copy(accessTime = accessTime, modificationTime = modificationTime)
-            }
-            chunkCache.indexManager.setInfo(path, newFileInfo)*/
+            file.accessTime = accessTime
+            file.modificationTime = modificationTime
             return 0
         } catch (ex: Exception) {
             ex.printStackTrace()

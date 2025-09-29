@@ -3,6 +3,7 @@ package gecko10000.filecollage.dao
 import gecko10000.filecollage.dao.remote.RemoteDAO
 import gecko10000.filecollage.model.index.File
 import gecko10000.filecollage.model.index.FileChunk
+import gecko10000.filecollage.model.index.Time
 import gecko10000.filecollage.util.log
 import jnr.ffi.Pointer
 import kotlinx.coroutines.runBlocking
@@ -86,6 +87,7 @@ class FileDAO : KoinComponent {
                 chunkStartByte,
                 bytesToWrite
             )
+            file.modificationTime = Time.now()
             cachedChunk.dirty = true
             chunkCacheDAO.touchChunk(fileChunk, cachedChunk)
             bytesCovered += bytesToWrite
@@ -117,6 +119,7 @@ class FileDAO : KoinComponent {
             // Step 3: read from our byte array
             log.debug("Reading {}, {}, {}, {}", bytesCovered, cachedChunk.bytes.size, chunkStartByte, bytesToRead)
             buf.put(bytesCovered.toLong(), cachedChunk.bytes, chunkStartByte, bytesToRead)
+            file.accessTime = Time.now()
             bytesCovered += bytesToRead
         }
         return bytesCovered

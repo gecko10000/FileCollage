@@ -1,9 +1,6 @@
 package gecko10000.filecollage.model.index
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
-import java.util.concurrent.locks.ReadWriteLock
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 /**
  * Represents a node in our filesystem.
@@ -15,7 +12,6 @@ sealed class Node {
     abstract var permissions: Int
     abstract var uid: Long
     abstract var gid: Long
-
-    @Transient
-    private val lock: ReadWriteLock = ReentrantReadWriteLock()
+    abstract var accessTime: Time
+    abstract var modificationTime: Time
 }
