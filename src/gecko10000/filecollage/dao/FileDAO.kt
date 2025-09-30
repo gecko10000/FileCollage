@@ -6,6 +6,7 @@ import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.model.index.Time
 import gecko10000.filecollage.util.log
 import jnr.ffi.Pointer
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -18,6 +19,7 @@ class FileDAO : KoinComponent {
 
     private val remoteDAO: RemoteDAO by inject()
     private val chunkCacheDAO: ChunkCacheDAO by inject()
+    private val coroutineScope: CoroutineScope by inject()
 
     /**
      * Gets the indices required by the operation.
@@ -123,6 +125,64 @@ class FileDAO : KoinComponent {
             bytesCovered += bytesToRead
         }
         return bytesCovered
+    }
+
+    // Write zeroes to the new bytes
+    // and add new chunks as necessary
+    private fun expandFile(file: File, newSize: Long) {
+        val offset = file.size
+        val newByteSize = (newSize - offset).toInt()
+        val affectedChunks = calculateChunkIndices(file.size, newByteSize)
+        for (chunkIndex in affectedChunks) {
+            val chunkStartByte = if (affectedChunks.first == chunkIndex)
+                (offset % remoteDAO.getMaxChunkSize()).toInt()
+            else 0
+            val chunkEndByte = if (affectedChunks.last == chunkIndex)
+                ((newSize - 1) % remoteDAO.getMaxChunkSize() + 1).toInt()
+            else remoteDAO.getMaxChunkSize()
+            val isNewChunk = chunkIndex >= file.fileChunks.size
+            if (isNewChunk) {
+                file.fileChunks.add(chunkIndex, FileChunk(UUID.randomUUID(), null, chunkEndByte))
+            }
+            val fileChunk = file.fileChunks[chunkIndex]
+            val cachedChunk = runBlocking { chunkCacheDAO.getChunk(fileChunk) }
+            fileChunk.size = chunkEndByte
+            cachedChunk.dirty = true
+            cachedChunk.size = chunkEndByte
+            Arrays.fill(cachedChunk.bytes, chunkStartByte, chunkEndByte, 0)
+        }
+        file.size = newSize
+    }
+
+    // For shrinking, we just need to resize the new last chunk
+    // and dispose of the excess ones. We don't need to re-upload
+    // the last chunk, since the size is clientside.
+    private fun shrinkFile(file: File, newSize: Long) {
+        // Chunk size 10
+        // newSize 9 -> newLastChunkIndex = 0
+        // newSize 10 -> newLastChunkIndex = 0
+        // newSize 11 -> newLastChunkIndex = 1
+        // So... just a ceil - 1
+        val newLastChunkIndex = ((newSize - 1).toDouble() / remoteDAO.getMaxChunkSize()).toInt()
+        val endByteIndexInLastChunk = (newSize % remoteDAO.getMaxChunkSize()).toInt()
+        val toRemove = file.fileChunks.subList(newLastChunkIndex + 1, file.fileChunks.size)
+        toRemove.forEach { chunkCacheDAO.dropChunk(it) }
+        file.fileChunks.removeAll(toRemove)
+        file.fileChunks[newLastChunkIndex].size = endByteIndexInLastChunk
+        file.size = newSize
+    }
+
+    fun truncateFile(file: File, newSize: Long) {
+        if (file.size < newSize) {
+            expandFile(file, newSize)
+        } else if (file.size > newSize) {
+            shrinkFile(file, newSize)
+        }
+    }
+
+    // for unlink
+    fun deleteFileChunks(file: File) {
+        file.fileChunks.forEach { chunkCacheDAO.dropChunk(it) }
     }
 
 }

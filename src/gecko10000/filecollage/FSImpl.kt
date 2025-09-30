@@ -127,7 +127,7 @@ class FSImpl : FuseStubFS(), KoinComponent {
             }
             if (file !is File) {
                 log.debug("Node {} is not a file, cannot read.", path)
-                return -ErrorCodes.ENOENT()
+                return -ErrorCodes.EISDIR()
             }
             return fileDAO.readBytes(file, buf, size.toInt(), offset)
         } catch (ex: Exception) {
@@ -222,9 +222,17 @@ class FSImpl : FuseStubFS(), KoinComponent {
     override fun truncate(path: String, size: Long): Int {
         try {
             log.debug("Truncating {}", path)
-            // TODO
-            return super.truncate(path, size)
-
+            val file = directoryDAO.lookupNode(path)
+            if (file == null) {
+                log.debug("File {} does not exist, could not truncate.", path)
+                return -ErrorCodes.ENOENT()
+            }
+            if (file !is File) {
+                log.debug("Node {} is not a file, could not truncate.", path)
+                return -ErrorCodes.EISDIR()
+            }
+            fileDAO.truncateFile(file, size)
+            return 0
         } catch (ex: Exception) {
             ex.printStackTrace()
             throw ex
@@ -242,6 +250,9 @@ class FSImpl : FuseStubFS(), KoinComponent {
             }
             val parent: Dir = directoryDAO.lookupParent(path)!!
             directoryDAO.removeNode(parent, node)
+            if (node is File) {
+                fileDAO.deleteFileChunks(node)
+            }
             return 0
         } catch (ex: Exception) {
             ex.printStackTrace()
@@ -275,7 +286,7 @@ class FSImpl : FuseStubFS(), KoinComponent {
             }
             if (file !is File) {
                 log.debug("Node {} is not a file, could not write.", path)
-                return -ErrorCodes.ENOENT()
+                return -ErrorCodes.EISDIR()
             }
             return fileDAO.writeBytes(
                 file = file,

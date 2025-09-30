@@ -63,15 +63,14 @@ class ChunkCacheDAO : KoinComponent {
         }
         log.debug("Evicting dirty cached chunk {} because cache is full.", oldest.key.id)
         oldest.value.dirty = false // set it to be non-dirty temporarily so it's not uploaded over and over again
+        oldest.value.uploading = true
         coroutineScope.launch {
-            oldest.value.uploading = true
             val fileId = remoteDAO.uploadFileChunk(oldest.key, oldest.value)
             oldest.value.uploading = false
             oldest.key.remoteChunkId = fileId
             cache.remove(oldest.key)
         }
     }
-
 
     /**
      * Chunk has been updated and needs to be "touched" in the cache.
@@ -103,6 +102,10 @@ class ChunkCacheDAO : KoinComponent {
 
     fun getChunkAsync(fileChunk: FileChunk) {
         coroutineScope.launch { getChunk(fileChunk) }
+    }
+
+    fun dropChunk(fileChunk: FileChunk): Boolean {
+        return cache.remove(fileChunk) != null
     }
 
 }
