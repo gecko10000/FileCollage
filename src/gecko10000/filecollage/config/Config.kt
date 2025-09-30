@@ -19,4 +19,6 @@ data class Config(
     val requestTimeoutMs: Long = 2 * 60 * 1000,
     val saveIntervalMs: Long = 1 * 60 * 1000, // for both cache and index
     val cacheSizeChunks: Int = 100, // 20 MB * 100 = 2 GB
+    val preCacheChunkCount: Int = 3, // loads chunks ahead of time, before they've been read
+    val simultaneousCacheEvictions: Int = 5,
 )

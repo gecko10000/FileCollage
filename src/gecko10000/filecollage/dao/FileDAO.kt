@@ -1,12 +1,13 @@
 package gecko10000.filecollage.dao
 
+import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.dao.remote.RemoteDAO
 import gecko10000.filecollage.model.index.File
 import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.model.index.Time
 import gecko10000.filecollage.util.log
+import gecko10000.telefuse.config.JsonConfigWrapper
 import jnr.ffi.Pointer
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -19,7 +20,9 @@ class FileDAO : KoinComponent {
 
     private val remoteDAO: RemoteDAO by inject()
     private val chunkCacheDAO: ChunkCacheDAO by inject()
-    private val coroutineScope: CoroutineScope by inject()
+    private val configFile: JsonConfigWrapper<Config> by inject()
+    private val config: Config
+        get() = configFile.value
 
     /**
      * Gets the indices required by the operation.
@@ -94,6 +97,7 @@ class FileDAO : KoinComponent {
             chunkCacheDAO.touchChunk(fileChunk, cachedChunk)
             bytesCovered += bytesToWrite
         }
+        preCache(file, affectedChunks.last)
         return bytesCovered
     }
 
@@ -124,6 +128,7 @@ class FileDAO : KoinComponent {
             file.accessTime = Time.now()
             bytesCovered += bytesToRead
         }
+        preCache(file, affectedChunks.last)
         return bytesCovered
     }
 
@@ -183,6 +188,16 @@ class FileDAO : KoinComponent {
     // for unlink
     fun deleteFileChunks(file: File) {
         file.fileChunks.forEach { chunkCacheDAO.dropChunk(it) }
+    }
+
+    /**
+     * Enqueues future chunks for retrieval.
+     */
+    private fun preCache(file: File, chunkIndex: Int) {
+        for (i in 1..config.preCacheChunkCount) {
+            val futureChunk = file.fileChunks.getOrNull(chunkIndex + i) ?: break
+            chunkCacheDAO.getChunkAsync(futureChunk)
+        }
     }
 
 }
