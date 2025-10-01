@@ -86,7 +86,9 @@ class ChunkCacheDAO : KoinComponent {
         val fileId = remoteDAO.uploadFileChunk(chunkEntry.key, cachedChunk)
         chunkEntry.key.remoteChunkId = fileId
         cachedChunk.uploading = false
-        cache.remove(chunkEntry.key)
+        if (!cachedChunk.dirty) {
+            cache.remove(chunkEntry.key)
+        }
     }
 
     private suspend fun evictOldestChunks() {
