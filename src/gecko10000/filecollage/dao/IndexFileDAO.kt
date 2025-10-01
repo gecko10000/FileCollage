@@ -48,8 +48,10 @@ class IndexFileDAO : KoinComponent {
     init {
         loadFromFile()
         coroutineScope.launch {
-            delay(config.saveIntervalMs)
-            saveToFile()
+            while (true) {
+                delay(config.saveIntervalMs)
+                saveToFile()
+            }
         }
         Runtime.getRuntime().addShutdownHook(Thread {
             runBlocking { saveToFile() }
