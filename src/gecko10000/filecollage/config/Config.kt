@@ -2,8 +2,9 @@
 
 package gecko10000.filecollage.config
 
+import dev.inmo.tgbotapi.types.ChatId
 import dev.inmo.tgbotapi.types.ChatIdentifier
-import dev.inmo.tgbotapi.types.Username
+import dev.inmo.tgbotapi.types.RawChatId
 import gecko10000.filecollage.config.serializers.PathSerializer
 import gecko10000.filecollage.util.Constants
 import kotlinx.serialization.Serializable
@@ -14,7 +15,7 @@ import kotlin.io.path.Path
 @Serializable
 data class Config(
     val token: String = "NO_TOKEN",
-    val chatId: ChatIdentifier = Username("@username"),
+    val chatId: ChatIdentifier = ChatId(RawChatId(123456789)),
     val indexFile: Path = Path(Constants.DEFAULT_DATA_FILE_NAME),
     val requestTimeoutMs: Long = 2 * 60 * 1000,
     val saveIntervalMs: Long = 1 * 60 * 1000, // for both cache and index
