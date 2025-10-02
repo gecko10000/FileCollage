@@ -37,7 +37,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
         val bytes = if (cachedChunk.size == getMaxChunkSize()) cachedChunk.bytes
         else cachedChunk.bytes.copyOf(cachedChunk.size)
         val response = bot.sendDocument(
-            config.channelId,
+            config.chatId,
             bytes.asMultipartFile(
                 fileName = fileChunk.id.toString()
             )

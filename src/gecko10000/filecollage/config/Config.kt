@@ -14,7 +14,7 @@ import kotlin.io.path.Path
 @Serializable
 data class Config(
     val token: String = "NO_TOKEN",
-    val channelId: ChatIdentifier = Username("@username"),
+    val chatId: ChatIdentifier = Username("@username"),
     val indexFile: Path = Path(Constants.DEFAULT_DATA_FILE_NAME),
     val requestTimeoutMs: Long = 2 * 60 * 1000,
     val saveIntervalMs: Long = 1 * 60 * 1000, // for both cache and index
