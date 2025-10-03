@@ -119,7 +119,6 @@ class FSImpl : FuseStubFS(), KoinComponent {
         fi: FuseFileInfo,
     ): Int {
         try {
-            log.debug("Reading file {}", path)
             val file = directoryDAO.lookupNode(path)
             if (file == null) {
                 log.debug("File {} not found, cannot read.", path)
@@ -278,7 +277,6 @@ class FSImpl : FuseStubFS(), KoinComponent {
         fi: FuseFileInfo,
     ): Int {
         try {
-            log.debug("Writing to {}", path)
             val file = directoryDAO.lookupNode(path)
             if (file == null) {
                 log.debug("File {} does not exist, could not write.", path)

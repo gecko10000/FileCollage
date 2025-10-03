@@ -2,6 +2,7 @@ package gecko10000.filecollage.dao
 
 import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.dao.remote.RemoteDAO
+import gecko10000.filecollage.model.cache.Priority
 import gecko10000.filecollage.model.index.File
 import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.model.index.Time
@@ -63,7 +64,6 @@ class FileDAO : KoinComponent {
 
             val bytesToWrite = chunkEndByte - chunkStartByte
 
-            log.debug("Start: {}, end: {}", chunkStartByte, chunkEndByte)
             // Step 2: create dummy LocalFileChunk if needed
             val isNewChunk = chunkIndex >= file.fileChunks.size
             if (isNewChunk) {
@@ -82,9 +82,6 @@ class FileDAO : KoinComponent {
                 fileChunk.size = finalChunkSize
                 cachedChunk.size = finalChunkSize
             }
-            log.debug(
-                "Writing {}, {}, {}, {}", bytesCovered, cachedChunk.bytes.size, chunkStartByte, bytesToWrite
-            )
             // Step 5: write to our byte array
             buf.get(
                 bytesCovered.toLong(),
@@ -123,7 +120,6 @@ class FileDAO : KoinComponent {
             val cachedChunk = runBlocking { chunkCacheDAO.getChunk(fileChunk) }
 
             // Step 3: read from our byte array
-            log.debug("Reading {}, {}, {}, {}", bytesCovered, cachedChunk.bytes.size, chunkStartByte, bytesToRead)
             buf.put(bytesCovered.toLong(), cachedChunk.bytes, chunkStartByte, bytesToRead)
             file.accessTime = Time.now()
             bytesCovered += bytesToRead
@@ -196,7 +192,7 @@ class FileDAO : KoinComponent {
     private fun preCache(file: File, chunkIndex: Int) {
         for (i in 1..config.preCacheChunkCount) {
             val futureChunk = file.fileChunks.getOrNull(chunkIndex + i) ?: break
-            chunkCacheDAO.getChunkAsync(futureChunk)
+            chunkCacheDAO.getChunkAsync(futureChunk, Priority.LOW)
         }
     }
 

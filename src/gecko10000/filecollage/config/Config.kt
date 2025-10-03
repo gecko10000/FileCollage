@@ -14,12 +14,14 @@ import kotlin.io.path.Path
 
 @Serializable
 data class Config(
-    val token: String = "NO_TOKEN",
-    val chatId: ChatIdentifier = ChatId(RawChatId(123456789)),
     val indexFile: Path = Path(Constants.DEFAULT_DATA_FILE_NAME),
     val requestTimeoutMs: Long = 2 * 60 * 1000,
     val saveIntervalMs: Long = 1 * 60 * 1000, // for both cache and index
     val cacheSizeChunks: Int = 100, // 20 MB * 100 = 2 GB
     val preCacheChunkCount: Int = 3, // loads chunks ahead of time, before they've been read
     val simultaneousCacheEvictions: Int = 5,
+    val telegramToken: String = "NO_TOKEN",
+    val telegramChatId: ChatIdentifier = ChatId(RawChatId(123456789)),
+    val telegramDownloadWorkers: Int = 3,
+    val telegramUploadWorkers: Int = 4,
 )

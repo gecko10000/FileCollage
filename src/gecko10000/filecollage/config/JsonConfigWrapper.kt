@@ -17,6 +17,7 @@ class JsonConfigWrapper<T : Any>(
     companion object {
         private const val backupAmount = 5
         private const val backupStart = 0
+        private const val backupScheme = "%s.%d.bak"
     }
 
     constructor(
@@ -42,6 +43,7 @@ class JsonConfigWrapper<T : Any>(
     var value: T = initialValue
 
     init {
+        backup()
         reload()
     }
 
@@ -94,9 +96,7 @@ class JsonConfigWrapper<T : Any>(
     }
 
 
-    private val backupScheme = "$fileName.%d.bak"
-
-    private fun resolveBackupFile(index: Int) = backupDirectory.resolve(backupScheme.format(index))
+    private fun resolveBackupFile(index: Int) = backupDirectory.resolve(backupScheme.format(fileName, index))
 
     private fun shiftBackupDown(index: Int) {
         val sourceFile = resolveBackupFile(index)

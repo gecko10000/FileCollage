@@ -4,6 +4,7 @@ import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.dao.remote.FileId
 import gecko10000.filecollage.dao.remote.RemoteDAO
 import gecko10000.filecollage.model.cache.CachedChunk
+import gecko10000.filecollage.model.cache.Priority
 import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
@@ -65,7 +66,6 @@ class ChunkCacheDAO : KoinComponent {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun evictOldestChunk(chunkEntry: Map.Entry<FileChunk, Deferred<CachedChunk>>) {
-        log.info("Evicting {}", chunkEntry.key.id)
         if (!chunkEntry.value.isCompleted) {
             cache.remove(chunkEntry.key)
             return
@@ -115,13 +115,12 @@ class ChunkCacheDAO : KoinComponent {
     // Either get existing one (or await it),
     // or cache/get it. Blocking.
     suspend fun getChunk(fileChunk: FileChunk): CachedChunk {
-        return getChunkAsync(fileChunk).await()
+        return getChunkAsync(fileChunk, Priority.HIGH).await()
     }
 
     // Returns the Deferred immediately
-    fun getChunkAsync(fileChunk: FileChunk): Deferred<CachedChunk> {
+    fun getChunkAsync(fileChunk: FileChunk, priority: Priority): Deferred<CachedChunk> {
         val completableDeferred = CompletableDeferred<CachedChunk>()
-        log.debug("{}", Exception().stackTraceToString())
         fileChunk.lastUse = System.currentTimeMillis()
         val prev = cache.putIfAbsent(fileChunk, completableDeferred)
         if (prev != null) {
@@ -136,8 +135,7 @@ class ChunkCacheDAO : KoinComponent {
             if (fileChunk.remoteChunkId == null) {
                 cachedChunk = CachedChunk.empty(remoteDAO.getMaxChunkSize())
             } else {
-                log.info("Caching chunk {}", fileChunk.id)
-                val bytes = remoteDAO.downloadFileChunk(fileChunk)
+                val bytes = remoteDAO.downloadFileChunk(fileChunk, priority)
                 cachedChunk = CachedChunk.of(bytes, remoteDAO.getMaxChunkSize())
                 log.debug("Downloaded chunk for {}", fileChunk.id)
             }
