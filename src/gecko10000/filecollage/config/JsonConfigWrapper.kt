@@ -105,6 +105,8 @@ class JsonConfigWrapper<T : Any>(
     }
 
     private fun backup() {
+        // Only back up if it exists.
+        if (!configFile.exists()) return
         // Don't back up duplicates.
         val firstBackup = resolveBackupFile(backupStart)
         if (firstBackup.exists() && Files.mismatch(firstBackup.toPath(), configFile.toPath()) == -1L) {
