@@ -9,6 +9,8 @@ import gecko10000.filecollage.model.index.Time
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
 import jnr.ffi.Pointer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -21,6 +23,7 @@ class FileDAO : KoinComponent {
 
     private val remoteDAO: RemoteDAO by inject()
     private val chunkCacheDAO: ChunkCacheDAO by inject()
+    private val coroutineScope: CoroutineScope by inject()
     private val configFile: JsonConfigWrapper<Config> by inject()
     private val config: Config
         get() = configFile.value
@@ -91,7 +94,9 @@ class FileDAO : KoinComponent {
             )
             file.modificationTime = Time.now()
             cachedChunk.dirty = true
-            chunkCacheDAO.touchChunk(fileChunk, cachedChunk)
+            coroutineScope.launch {
+                chunkCacheDAO.touchChunk(fileChunk, cachedChunk)
+            }
             bytesCovered += bytesToWrite
         }
         preCache(file, affectedChunks.last)

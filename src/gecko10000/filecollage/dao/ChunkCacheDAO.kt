@@ -9,6 +9,7 @@ import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.*
@@ -24,12 +25,27 @@ class ChunkCacheDAO : KoinComponent {
 
     private val cache: MutableMap<FileChunk, Deferred<CachedChunk>> = ConcurrentHashMap()
 
+    // Possible TODO: figure out why this needs -1
+    private val cacheSema = Semaphore(config.cacheHardLimitChunks - 1) // One per chunk in the cache
+
+    private fun removeFromCache(fileChunk: FileChunk): Deferred<CachedChunk>? {
+        //log.info("Removing {} cache size: {}, sema: {}", fileChunk.id, cache.size, cacheSema.availablePermits)
+        val prev = cache.remove(fileChunk)
+        if (prev != null) {
+            cacheSema.release()
+        }
+        return prev
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun flush() {
         val iterator = cache.iterator()
         val tasks = mutableMapOf<FileChunk, Deferred<FileId>>()
         while (iterator.hasNext()) {
             val entry = iterator.next()
-            val cachedChunk = entry.value.await()
+            // Skip still-downloading ones.
+            if (!entry.value.isCompleted) continue
+            val cachedChunk = entry.value.getCompleted()
             if (!cachedChunk.dirty) continue
             cachedChunk.dirty = false
             // Upload all chunks asynchronously
@@ -67,7 +83,7 @@ class ChunkCacheDAO : KoinComponent {
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun evictOldestChunk(chunkEntry: Map.Entry<FileChunk, Deferred<CachedChunk>>) {
         if (!chunkEntry.value.isCompleted) {
-            cache.remove(chunkEntry.key)
+            removeFromCache(chunkEntry.key)
             return
         }
         val cachedChunk = chunkEntry.value.getCompleted()
@@ -76,7 +92,7 @@ class ChunkCacheDAO : KoinComponent {
             // and doesn't need to be removed, as there's already a job for it.
             if (!cachedChunk.uploading) {
                 log.debug("Removing clean cached chunk {} because cache is full.", cachedChunk.id)
-                cache.remove(chunkEntry.key)
+                removeFromCache(chunkEntry.key)
             }
             return
         }
@@ -87,12 +103,12 @@ class ChunkCacheDAO : KoinComponent {
         chunkEntry.key.remoteChunkId = fileId
         cachedChunk.uploading = false
         if (!cachedChunk.dirty) {
-            cache.remove(chunkEntry.key)
+            removeFromCache(chunkEntry.key)
         }
     }
 
     private suspend fun evictOldestChunks() {
-        if (cache.size <= config.cacheSizeChunks) return // cache has room.
+        if (cache.size <= config.cacheSoftLimitChunks) return // cache has room.
         val oldest = findOldestChunks()
         val jobs = mutableListOf<Job>()
         for (entry in oldest.entries) {
@@ -105,11 +121,12 @@ class ChunkCacheDAO : KoinComponent {
      * Chunk has been updated and needs to be "touched" in the cache.
      * Also, possibly evicts a chunk.
      */
-    fun touchChunk(fileChunk: FileChunk, cachedChunk: CachedChunk) {
+    suspend fun touchChunk(fileChunk: FileChunk, cachedChunk: CachedChunk) {
         fileChunk.lastUse = System.currentTimeMillis()
         val prev = cache.put(fileChunk, CompletableDeferred(cachedChunk))
         if (prev != null) return // we did not add a new value, no need to clean.
         coroutineScope.launch { evictOldestChunks() }
+        cacheSema.acquire()
     }
 
     // Either get existing one (or await it),
@@ -126,11 +143,13 @@ class ChunkCacheDAO : KoinComponent {
         if (prev != null) {
             log.debug("Returning existing chunk future for {}", fileChunk.id)
             return prev
-        } else {
-            coroutineScope.launch { evictOldestChunks() } // we added to cache, might need to evict some chunks.
         }
         log.debug("Cache miss, retrieving data for {}.", fileChunk.id)
         coroutineScope.launch {
+            launch {
+                evictOldestChunks() // we added to cache, might need to evict some chunks.
+            }
+            cacheSema.acquire()
             val cachedChunk: CachedChunk
             if (fileChunk.remoteChunkId == null) {
                 cachedChunk = CachedChunk.empty(remoteDAO.getMaxChunkSize())
@@ -145,8 +164,12 @@ class ChunkCacheDAO : KoinComponent {
         return completableDeferred
     }
 
-    fun dropChunk(fileChunk: FileChunk): Boolean {
-        return cache.remove(fileChunk)?.cancel() != null
+    fun dropChunk(fileChunk: FileChunk) {
+        val cachedChunk = cache.remove(fileChunk)
+        if (cachedChunk != null) {
+            cachedChunk.cancel()
+            cacheSema.release()
+        }
     }
 
 }
