@@ -24,5 +24,5 @@ data class Config(
     val telegramToken: String = "NO_TOKEN",
     val telegramChatId: ChatIdentifier = ChatId(RawChatId(123456789)),
     val telegramDownloadWorkers: Int = 3,
-    val telegramUploadWorkers: Int = 4,
+    val telegramUploadWorkers: Int = 2,
 )

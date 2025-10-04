@@ -33,6 +33,7 @@ class ChunkCacheDAO : KoinComponent {
         val prev = cache.remove(fileChunk)
         if (prev != null) {
             cacheSema.release()
+            coroutineScope.launch { evictOldestChunks() }
         }
         return prev
     }
@@ -59,10 +60,12 @@ class ChunkCacheDAO : KoinComponent {
         for (task in tasks) {
             val fileId = task.value.await()
             task.key.remoteChunkId = fileId
+            coroutineScope.launch {
+                evictOldestChunks()
+            }
         }
     }
 
-    //
     private fun findOldestChunks(): Map<FileChunk, Deferred<CachedChunk>> {
         val oldestEntries = PriorityQueue<Pair<FileChunk, Deferred<CachedChunk>>>(Comparator { e1, e2 ->
             (e2.first.lastUse - e1.first.lastUse).toInt()
@@ -127,6 +130,7 @@ class ChunkCacheDAO : KoinComponent {
         if (prev != null) return // we did not add a new value, no need to clean.
         coroutineScope.launch { evictOldestChunks() }
         cacheSema.acquire()
+        coroutineScope.launch { evictOldestChunks() }
     }
 
     // Either get existing one (or await it),
@@ -150,6 +154,7 @@ class ChunkCacheDAO : KoinComponent {
                 evictOldestChunks() // we added to cache, might need to evict some chunks.
             }
             cacheSema.acquire()
+            launch { evictOldestChunks() }
             val cachedChunk: CachedChunk
             if (fileChunk.remoteChunkId == null) {
                 cachedChunk = CachedChunk.empty(remoteDAO.getMaxChunkSize())

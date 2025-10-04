@@ -44,7 +44,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     private suspend fun performDownload(workerId: Int) {
         val request = downloadQueues.values.first { it.isNotEmpty() }.poll()
-        log.debug("Worker {} downloading chunk {}", workerId, request.fileChunk.id)
+        log.info("Downloading {} ({})", request.fileChunk.id, workerId)
         val bytes = bot.downloadFile(InputFile.fromId(request.fileChunk.remoteChunkId!!))
         request.response.complete(bytes)
     }
@@ -52,6 +52,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
     private suspend fun performUpload(fileChunk: FileChunk, cachedChunk: CachedChunk): FileId {
         val bytes = if (cachedChunk.size == getMaxChunkSize()) cachedChunk.bytes
         else cachedChunk.bytes.copyOf(cachedChunk.size)
+        log.info("Uploading {}", fileChunk.id)
         val response = bot.sendDocument(
             config.telegramChatId,
             bytes.asMultipartFile(
@@ -84,7 +85,6 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     override suspend fun downloadFileChunk(fileChunk: FileChunk, priority: Priority): ByteArray {
         val downloadRequest = DownloadRequest(fileChunk, CompletableDeferred())
-        log.info("Downloading {} at {} priority", downloadRequest.fileChunk.id, priority)
         downloadQueues.getValue(priority).add(downloadRequest)
         downloadChannel.send(Unit)
         return downloadRequest.response.await()
@@ -92,7 +92,6 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     override suspend fun uploadFileChunk(fileChunk: FileChunk, cachedChunk: CachedChunk): FileId {
         val uploadRequest = UploadRequest(fileChunk, cachedChunk, CompletableDeferred())
-        log.info("Uploading {}", fileChunk.id)
         uploadChannel.send(uploadRequest)
         return uploadRequest.response.await()
     }
