@@ -6,10 +6,10 @@
                    https://logging.apache.org/xml/ns/log4j-config-2.xsd">
     <Appenders>
         <Console name="CONSOLE">
-            <PatternLayout pattern="%d{ABSOLUTE}|%C|%p: %m%n"/>
+            <PatternLayout pattern="%d{ABSOLUTE}|%C{1}|%p: %m%n"/>
         </Console>
         <File name="FILE" fileName="latest.log">
-            <PatternLayout pattern="%d{ABSOLUTE}|%C|%p: %m%n"/>
+            <PatternLayout pattern="%d{ABSOLUTE}|%C{1}|%p: %m%n"/>
         </File>
     </Appenders>
     <Loggers>
