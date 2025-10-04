@@ -26,6 +26,7 @@ object FileCollageModule {
         single<Json> {
             Json {
                 encodeDefaults = true
+                ignoreUnknownKeys = true
             }
         }
         single { FSImpl() }

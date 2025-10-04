@@ -25,4 +25,5 @@ data class Config(
     val telegramChatId: ChatIdentifier = ChatId(RawChatId(123456789)),
     val telegramDownloadWorkers: Int = 3,
     val telegramUploadWorkers: Int = 2,
+    val mountOptions: List<String> = listOf()
 )
