@@ -27,7 +27,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     companion object {
         private const val DOWNLOAD_ERROR = "wrong file_id or the file is temporarily unavailable"
-        private const val UPLOAD_ERROR = "too Many Requests: retry after " // Might always be "retry after 8"
+        private const val UPLOAD_ERROR = "too Many Requests: retry after "
     }
 
     private val coroutineScope: CoroutineScope by inject()
