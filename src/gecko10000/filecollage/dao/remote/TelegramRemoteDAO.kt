@@ -1,6 +1,7 @@
 package gecko10000.filecollage.dao.remote
 
 import dev.inmo.tgbotapi.bot.exceptions.CommonRequestException
+import dev.inmo.tgbotapi.bot.exceptions.TooMuchRequestsException
 import dev.inmo.tgbotapi.bot.ktor.telegramBot
 import dev.inmo.tgbotapi.bot.settings.limiters.CommonLimiter
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
@@ -60,8 +61,8 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
         while (bytes == null && (configuredAttempts == -1 || attempts < configuredAttempts)) {
             bytes = runCatching { bot.downloadFile(file) }
                 .onFailure { ex ->
-                    if (ex !is CommonRequestException) throw ex
-                    val isRateLimit = ex.response.description?.contains(DOWNLOAD_ERROR) == true
+                    val isRateLimit = ex is TooMuchRequestsException
+                            || (ex as? CommonRequestException)?.response?.description?.contains(DOWNLOAD_ERROR) == true
                     if (!isRateLimit) throw ex
                     log.error("({}) Failed to download file {}, retrying.", ++attempts, request.fileChunk.id)
                 }
@@ -88,8 +89,8 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
                 )
             }
                 .onFailure { ex ->
-                    if (ex !is CommonRequestException) throw ex
-                    val isRateLimit = ex.response.description?.contains(UPLOAD_ERROR) == true
+                    val isRateLimit = ex is TooMuchRequestsException
+                            || (ex as? CommonRequestException)?.response?.description?.contains(UPLOAD_ERROR) == true
                     if (!isRateLimit) throw ex
                     log.error("({}) Failed to upload file {}, retrying.", ++attempts, fileChunk.id)
                 }
