@@ -27,8 +27,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     companion object {
-        private const val DOWNLOAD_ERROR = "wrong file_id or the file is temporarily unavailable"
-        private const val UPLOAD_ERROR = "too Many Requests: retry after "
+        private val DOWNLOAD_ERRORS = setOf(
+            "wrong file_id or the file is temporarily unavailable",
+        )
+        private val UPLOAD_ERRORS = setOf(
+            "too Many Requests: retry after ",
+            "internal Server Error during file upload"
+        )
     }
 
     private val coroutineScope: CoroutineScope by inject()
@@ -51,6 +56,11 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     private val uploadChannel = Channel<UploadRequest>()
 
+    private fun CommonRequestException?.isRetriableError(messages: Set<String>): Boolean {
+        val description = this?.response?.description ?: return false
+        return messages.any { description.contains(it) }
+    }
+
     private suspend fun performDownload(workerId: Int) {
         val request = downloadQueues.values.first { it.isNotEmpty() }.poll()
         log.info("Downloading {} ({})", request.fileChunk.id, workerId)
@@ -62,7 +72,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
             bytes = runCatching { bot.downloadFile(file) }
                 .onFailure { ex ->
                     val isRateLimit = ex is TooMuchRequestsException
-                            || (ex as? CommonRequestException)?.response?.description?.contains(DOWNLOAD_ERROR) == true
+                            || (ex as? CommonRequestException).isRetriableError(DOWNLOAD_ERRORS)
                     if (!isRateLimit) throw ex
                     log.error("({}) Failed to download file {}, retrying.", ++attempts, request.fileChunk.id)
                 }
@@ -90,7 +100,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
             }
                 .onFailure { ex ->
                     val isRateLimit = ex is TooMuchRequestsException
-                            || (ex as? CommonRequestException)?.response?.description?.contains(UPLOAD_ERROR) == true
+                            || (ex as? CommonRequestException).isRetriableError(UPLOAD_ERRORS)
                     if (!isRateLimit) throw ex
                     log.error("({}) Failed to upload file {}, retrying.", ++attempts, fileChunk.id)
                 }
