@@ -316,4 +316,38 @@ class FSImpl : FuseStubFS(), KoinComponent {
             throw ex
         }
     }
+
+    override fun chmod(path: String, mode: Long): Int {
+        try {
+            log.debug("Changing permissions to {} on {}", mode, path)
+            val file = directoryDAO.lookupNode(path)
+            if (file == null) {
+                log.debug("File {} does not exist, could not chmod", path)
+                return -ErrorCodes.ENOENT()
+            }
+            file.permissions = mode.toInt()
+            return 0
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            throw ex
+        }
+    }
+
+    override fun chown(path: String, uid: Long, gid: Long): Int {
+        try {
+            log.debug("Changing ownership to {}/{} for {}", uid, gid, path)
+            val file = directoryDAO.lookupNode(path)
+            if (file == null) {
+                log.debug("File {} does not exist, could not chown", path)
+                return -ErrorCodes.ENOENT()
+            }
+            file.uid = uid
+            file.gid = gid
+            return 0
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            throw ex
+        }
+    }
+
 }
