@@ -22,6 +22,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.io.EOFException
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class TelegramRemoteDAO : RemoteDAO, KoinComponent {
@@ -56,8 +57,11 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
 
     private val uploadChannel = Channel<UploadRequest>()
 
-    private fun CommonRequestException?.isRetriableError(messages: Set<String>): Boolean {
-        val description = this?.response?.description ?: return false
+    private fun Throwable.isRetriableError(messages: Set<String>): Boolean {
+        if (this is TooMuchRequestsException) return true
+        if (this.cause is EOFException) return true
+        if (this !is CommonRequestException) return false
+        val description = this.response.description ?: return false
         return messages.any { description.contains(it) }
     }
 
@@ -71,9 +75,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
         while (bytes == null && (configuredAttempts == -1 || attempts < configuredAttempts)) {
             bytes = runCatching { bot.downloadFile(file) }
                 .onFailure { ex ->
-                    val isRateLimit = ex is TooMuchRequestsException
-                            || (ex as? CommonRequestException).isRetriableError(DOWNLOAD_ERRORS)
-                    if (!isRateLimit) throw ex
+                    if (!ex.isRetriableError(DOWNLOAD_ERRORS)) throw ex
                     log.error("({}) Failed to download file {}, retrying.", ++attempts, request.fileChunk.id)
                 }
                 .getOrNull()
@@ -99,9 +101,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
                 )
             }
                 .onFailure { ex ->
-                    val isRateLimit = ex is TooMuchRequestsException
-                            || (ex as? CommonRequestException).isRetriableError(UPLOAD_ERRORS)
-                    if (!isRateLimit) throw ex
+                    if (!ex.isRetriableError(UPLOAD_ERRORS)) throw ex
                     log.error("({}) Failed to upload file {}, retrying.", ++attempts, fileChunk.id)
                 }
                 .getOrNull()
