@@ -24,6 +24,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.EOFException
 import java.io.IOException
+import java.nio.channels.UnresolvedAddressException
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class TelegramRemoteDAO : RemoteDAO, KoinComponent {
@@ -61,6 +62,7 @@ class TelegramRemoteDAO : RemoteDAO, KoinComponent {
     private fun Throwable.isRetriableError(messages: Set<String>): Boolean {
         if (this is TooMuchRequestsException) return true
         if (this is IOException) return true
+        if (this is UnresolvedAddressException) return true
         if (this.cause is EOFException) return true
         if (this !is CommonRequestException) return false
         val description = this.response.description ?: return false

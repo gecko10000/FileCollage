@@ -51,9 +51,9 @@ class ChunkCacheDAO : KoinComponent {
             cachedChunk.dirty = false
             // Upload all chunks asynchronously
             tasks += entry.key to coroutineScope.async {
-                cachedChunk.uploading = true
+                cachedChunk.uploading.set(true)
                 val fileId = remoteDAO.uploadFileChunk(entry.key, cachedChunk)
-                cachedChunk.uploading = false
+                cachedChunk.uploading.set(false)
                 return@async fileId
             }
         }
@@ -93,7 +93,7 @@ class ChunkCacheDAO : KoinComponent {
         // chunk doesn't need to be saved.
         if (!cachedChunk.dirty) {
             // and doesn't need to be removed, as there's already a job for it.
-            if (!cachedChunk.uploading) {
+            if (!cachedChunk.uploading.get()) {
                 log.debug("Removing clean cached chunk {} because cache is full.", cachedChunk.id)
                 removeFromCache(chunkEntry.key)
             }
@@ -101,10 +101,11 @@ class ChunkCacheDAO : KoinComponent {
         }
         log.debug("Evicting dirty cached chunk {} because cache is full.", cachedChunk.id)
         cachedChunk.dirty = false // set it to be non-dirty temporarily so it's not uploaded over and over again
-        cachedChunk.uploading = true
+        val prev = cachedChunk.uploading.getAndSet(true)
+        if (prev) return // already uploading
         val fileId = remoteDAO.uploadFileChunk(chunkEntry.key, cachedChunk)
         chunkEntry.key.remoteChunkId = fileId
-        cachedChunk.uploading = false
+        cachedChunk.uploading.set(false)
         if (!cachedChunk.dirty) {
             removeFromCache(chunkEntry.key)
         }

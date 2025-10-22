@@ -1,13 +1,14 @@
 package gecko10000.filecollage.model.cache
 
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 class CachedChunk(
     val id: UUID, // for testing
     var bytes: ByteArray,
     var size: Int,
     var dirty: Boolean,
-    var uploading: Boolean,
+    var uploading: AtomicBoolean,
 ) {
     companion object {
         fun empty(chunkSize: Int): CachedChunk {
@@ -16,7 +17,7 @@ class CachedChunk(
                 ByteArray(chunkSize),
                 size = 0,
                 dirty = false,
-                uploading = false,
+                uploading = AtomicBoolean(false),
             )
         }
 
@@ -31,7 +32,7 @@ class CachedChunk(
                 bytes = finalArray,
                 size = originalSize,
                 dirty = false,
-                uploading = false,
+                uploading = AtomicBoolean(false),
             )
         }
     }
