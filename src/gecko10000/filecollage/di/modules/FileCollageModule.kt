@@ -8,6 +8,7 @@ import gecko10000.filecollage.dao.ChunkCacheDAO
 import gecko10000.filecollage.dao.DirectoryDAO
 import gecko10000.filecollage.dao.FileDAO
 import gecko10000.filecollage.dao.IndexFileDAO
+import gecko10000.filecollage.util.StartupNullChecker
 import gecko10000.telefuse.config.JsonConfigWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,5 +46,6 @@ object FileCollageModule {
             )
         }
         single<CoroutineScope> { CoroutineScope(Dispatchers.IO) }
+        single { StartupNullChecker() }
     }
 }

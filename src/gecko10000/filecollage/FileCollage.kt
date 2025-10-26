@@ -2,6 +2,7 @@ package gecko10000.filecollage
 
 import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.di.modules.FileCollageModule
+import gecko10000.filecollage.util.StartupNullChecker
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
 import org.koin.core.component.KoinComponent
@@ -13,6 +14,7 @@ class FileCollage(mountPoint: Path) : KoinComponent {
 
     private val fuseFS: FSImpl by inject()
     private val configFile: JsonConfigWrapper<Config> by inject()
+    private val startupNullChecker: StartupNullChecker by inject()
     private val config: Config
         get() = configFile.value
 
@@ -24,6 +26,7 @@ class FileCollage(mountPoint: Path) : KoinComponent {
                 )
             )
         }
+        startupNullChecker.checkBroken()
         log.info("Mounting filesystem to {}", mountPoint)
         try {
             fuseFS.mount(mountPoint, true, false, config.mountOptions.toTypedArray())
