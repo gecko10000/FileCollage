@@ -1,4 +1,4 @@
-package gecko10000.filecollage.dao.remote
+package gecko10000.filecollage.client
 
 import dev.inmo.tgbotapi.bot.exceptions.CommonRequestException
 import dev.inmo.tgbotapi.bot.exceptions.TooMuchRequestsException
@@ -27,7 +27,7 @@ import java.io.IOException
 import java.nio.channels.UnresolvedAddressException
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class TelegramRemoteDAO : RemoteDAO, KoinComponent {
+class TelegramRemoteClient : RemoteClient, KoinComponent {
 
     companion object {
         private val DOWNLOAD_ERRORS = setOf(

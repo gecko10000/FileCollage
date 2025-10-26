@@ -1,13 +1,13 @@
 package gecko10000.filecollage.di.modules
 
 import gecko10000.filecollage.FSImpl
+import gecko10000.filecollage.client.RemoteClient
+import gecko10000.filecollage.client.TelegramRemoteClient
 import gecko10000.filecollage.config.Config
 import gecko10000.filecollage.dao.ChunkCacheDAO
 import gecko10000.filecollage.dao.DirectoryDAO
 import gecko10000.filecollage.dao.FileDAO
 import gecko10000.filecollage.dao.IndexFileDAO
-import gecko10000.filecollage.dao.remote.RemoteDAO
-import gecko10000.filecollage.dao.remote.TelegramRemoteDAO
 import gecko10000.telefuse.config.JsonConfigWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +35,7 @@ object FileCollageModule {
         single { FileDAO() }
 
         single { ChunkCacheDAO() }
-        single<RemoteDAO> { TelegramRemoteDAO() }
+        single<RemoteClient> { TelegramRemoteClient() }
         single<JsonConfigWrapper<Config>>(createdAtStart = true) {
             JsonConfigWrapper(
                 configDirectory = File("."),

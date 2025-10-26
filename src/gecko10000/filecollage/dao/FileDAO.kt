@@ -1,7 +1,7 @@
 package gecko10000.filecollage.dao
 
+import gecko10000.filecollage.client.RemoteClient
 import gecko10000.filecollage.config.Config
-import gecko10000.filecollage.dao.remote.RemoteDAO
 import gecko10000.filecollage.model.cache.Priority
 import gecko10000.filecollage.model.index.File
 import gecko10000.filecollage.model.index.FileChunk
@@ -21,7 +21,7 @@ import kotlin.math.min
 
 class FileDAO : KoinComponent {
 
-    private val remoteDAO: RemoteDAO by inject()
+    private val remoteClient: RemoteClient by inject()
     private val chunkCacheDAO: ChunkCacheDAO by inject()
     private val coroutineScope: CoroutineScope by inject()
     private val configFile: JsonConfigWrapper<Config> by inject()
@@ -39,8 +39,8 @@ class FileDAO : KoinComponent {
      * If startByte is 9 and size is 12, we want 0 and 3.
      */
     private fun calculateChunkIndices(startByte: Long, size: Int): IntRange {
-        val startIndex = startByte / remoteDAO.getMaxChunkSize()
-        val endIndexExclusive = ceil((startByte + size) / remoteDAO.getMaxChunkSize().toDouble()).toLong()
+        val startIndex = startByte / remoteClient.getMaxChunkSize()
+        val endIndexExclusive = ceil((startByte + size) / remoteClient.getMaxChunkSize().toDouble()).toLong()
         return IntRange(startIndex.toInt(), (endIndexExclusive - 1).toInt())
     }
 
@@ -57,13 +57,13 @@ class FileDAO : KoinComponent {
             // First chunk: start at `offset % chunkSize`
             // Other chunks: start at 0
             val chunkStartByte = if (affectedChunks.first == chunkIndex)
-                (offset % remoteDAO.getMaxChunkSize()).toInt()
+                (offset % remoteClient.getMaxChunkSize()).toInt()
             else 0
             // Last chunk: end at (offset + size) % chunkSize
             // Other chunks: end at chunkSize
             val chunkEndByte = if (affectedChunks.last == chunkIndex)
-                ((offset + size - 1) % remoteDAO.getMaxChunkSize() + 1).toInt()
-            else remoteDAO.getMaxChunkSize()
+                ((offset + size - 1) % remoteClient.getMaxChunkSize() + 1).toInt()
+            else remoteClient.getMaxChunkSize()
 
             val bytesToWrite = chunkEndByte - chunkStartByte
 
@@ -112,12 +112,12 @@ class FileDAO : KoinComponent {
             // Step 1: calculate bounds in chunk
             // Same logic as above
             val chunkStartByte = if (affectedChunks.first == chunkIndex)
-                (offset % remoteDAO.getMaxChunkSize()).toInt()
+                (offset % remoteClient.getMaxChunkSize()).toInt()
             else 0
             val actualSize = min(size.toLong(), file.size - offset).toInt()
             val chunkEndByte = if (affectedChunks.last == chunkIndex)
-                ((offset + actualSize - 1) % remoteDAO.getMaxChunkSize() + 1).toInt()
-            else remoteDAO.getMaxChunkSize()
+                ((offset + actualSize - 1) % remoteClient.getMaxChunkSize() + 1).toInt()
+            else remoteClient.getMaxChunkSize()
             val bytesToRead = chunkEndByte - chunkStartByte
 
             // Step 2: retrieve chunk if needed
@@ -141,11 +141,11 @@ class FileDAO : KoinComponent {
         val affectedChunks = calculateChunkIndices(file.size, newByteSize)
         for (chunkIndex in affectedChunks) {
             val chunkStartByte = if (affectedChunks.first == chunkIndex)
-                (offset % remoteDAO.getMaxChunkSize()).toInt()
+                (offset % remoteClient.getMaxChunkSize()).toInt()
             else 0
             val chunkEndByte = if (affectedChunks.last == chunkIndex)
-                ((newSize - 1) % remoteDAO.getMaxChunkSize() + 1).toInt()
-            else remoteDAO.getMaxChunkSize()
+                ((newSize - 1) % remoteClient.getMaxChunkSize() + 1).toInt()
+            else remoteClient.getMaxChunkSize()
             val isNewChunk = chunkIndex >= file.fileChunks.size
             if (isNewChunk) {
                 file.fileChunks.add(chunkIndex, FileChunk(UUID.randomUUID(), null, chunkEndByte))
@@ -169,8 +169,8 @@ class FileDAO : KoinComponent {
         // newSize 10 -> newLastChunkIndex = 0
         // newSize 11 -> newLastChunkIndex = 1
         // So... just a ceil - 1
-        val newLastChunkIndex = ((newSize - 1).toDouble() / remoteDAO.getMaxChunkSize()).toInt()
-        val endByteIndexInLastChunk = (newSize % remoteDAO.getMaxChunkSize()).toInt()
+        val newLastChunkIndex = ((newSize - 1).toDouble() / remoteClient.getMaxChunkSize()).toInt()
+        val endByteIndexInLastChunk = (newSize % remoteClient.getMaxChunkSize()).toInt()
         val toRemove = file.fileChunks.subList(newLastChunkIndex + 1, file.fileChunks.size)
         toRemove.forEach { chunkCacheDAO.dropChunk(it) }
         file.fileChunks.removeAll(toRemove)

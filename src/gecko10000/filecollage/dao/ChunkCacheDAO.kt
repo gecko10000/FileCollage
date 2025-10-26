@@ -1,8 +1,8 @@
 package gecko10000.filecollage.dao
 
+import gecko10000.filecollage.client.FileId
+import gecko10000.filecollage.client.RemoteClient
 import gecko10000.filecollage.config.Config
-import gecko10000.filecollage.dao.remote.FileId
-import gecko10000.filecollage.dao.remote.RemoteDAO
 import gecko10000.filecollage.model.cache.CachedChunk
 import gecko10000.filecollage.model.cache.Priority
 import gecko10000.filecollage.model.index.FileChunk
@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class ChunkCacheDAO : KoinComponent {
 
-    private val remoteDAO: RemoteDAO by inject()
+    private val remoteClient: RemoteClient by inject()
     private val coroutineScope: CoroutineScope by inject()
     private val configFile: JsonConfigWrapper<Config> by inject()
     private val config: Config
@@ -52,7 +52,7 @@ class ChunkCacheDAO : KoinComponent {
             // Upload all chunks asynchronously
             tasks += entry.key to coroutineScope.async {
                 cachedChunk.uploading.set(true)
-                val fileId = remoteDAO.uploadFileChunk(entry.key, cachedChunk)
+                val fileId = remoteClient.uploadFileChunk(entry.key, cachedChunk)
                 cachedChunk.uploading.set(false)
                 return@async fileId
             }
@@ -103,7 +103,7 @@ class ChunkCacheDAO : KoinComponent {
         cachedChunk.dirty = false // set it to be non-dirty temporarily so it's not uploaded over and over again
         val prev = cachedChunk.uploading.getAndSet(true)
         if (prev) return // already uploading
-        val fileId = remoteDAO.uploadFileChunk(chunkEntry.key, cachedChunk)
+        val fileId = remoteClient.uploadFileChunk(chunkEntry.key, cachedChunk)
         chunkEntry.key.remoteChunkId = fileId
         cachedChunk.uploading.set(false)
         if (!cachedChunk.dirty) {
@@ -158,10 +158,10 @@ class ChunkCacheDAO : KoinComponent {
             launch { evictOldestChunks() }
             val cachedChunk: CachedChunk
             if (fileChunk.remoteChunkId == null) {
-                cachedChunk = CachedChunk.empty(remoteDAO.getMaxChunkSize())
+                cachedChunk = CachedChunk.empty(remoteClient.getMaxChunkSize())
             } else {
-                val bytes = remoteDAO.downloadFileChunk(fileChunk, priority)
-                cachedChunk = CachedChunk.of(bytes, remoteDAO.getMaxChunkSize())
+                val bytes = remoteClient.downloadFileChunk(fileChunk, priority)
+                cachedChunk = CachedChunk.of(bytes, remoteClient.getMaxChunkSize())
                 log.debug("Downloaded chunk for {}", fileChunk.id)
             }
             touchChunk(fileChunk, cachedChunk)
