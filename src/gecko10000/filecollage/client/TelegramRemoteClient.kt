@@ -66,6 +66,7 @@ class TelegramRemoteClient : RemoteClient, KoinComponent {
         if (this.cause is EOFException) return true
         if (this !is CommonRequestException) return false
         val description = this.response.description ?: return false
+        if (description == "Gateway Timeout") return true
         return messages.any { description.contains(it) }
     }
 
