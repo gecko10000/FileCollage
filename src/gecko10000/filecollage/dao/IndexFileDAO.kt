@@ -15,15 +15,18 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import sun.misc.Signal
 import java.nio.file.NoSuchFileException
 import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
+import kotlin.system.exitProcess
 
 class IndexFileDAO : KoinComponent {
 
     companion object {
         private val ALL_PERMS_DIR = "755".toInt(8)
         private val ALL_PERMS_FILE = "644".toInt(8)
+        private val SIGINT_THRESHOLD = 5
     }
 
     private val json: Json by inject()
@@ -45,6 +48,27 @@ class IndexFileDAO : KoinComponent {
     )
         private set
 
+    private fun handleSigint() {
+        var sigInts = 0
+        Signal.handle(Signal("INT"), {
+            if (sigInts++ >= SIGINT_THRESHOLD) {
+                log.error("Quitting forcibly. State may be inconsistent.")
+                exitProcess(1)
+            }
+            // Only flush and exit on first sigint.
+            if (sigInts != 1) {
+                log.warn(
+                    "Not done cleaning up! Send SIGINT {} more times to quit forcibly.",
+                    SIGINT_THRESHOLD - sigInts + 1
+                )
+                return@handle
+            }
+            log.info("Exiting with SIGINT")
+            runBlocking { saveToFile() }
+            exitProcess(0)
+        })
+    }
+
     init {
         loadFromFile()
         coroutineScope.launch {
@@ -53,9 +77,7 @@ class IndexFileDAO : KoinComponent {
                 saveToFile()
             }
         }
-        Runtime.getRuntime().addShutdownHook(Thread {
-            runBlocking { saveToFile() }
-        })
+        handleSigint()
     }
 
 
