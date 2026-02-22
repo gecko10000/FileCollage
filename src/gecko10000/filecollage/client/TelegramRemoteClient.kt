@@ -92,10 +92,10 @@ class TelegramRemoteClient : RemoteClient, KoinComponent {
         request.response.complete(bytes)
     }
 
-    private suspend fun performUpload(fileChunk: FileChunk, cachedChunk: CachedChunk): FileId {
+    private suspend fun performUpload(fileChunk: FileChunk, cachedChunk: CachedChunk, workerId: Int): FileId {
         val bytes = if (cachedChunk.size == getMaxChunkSize()) cachedChunk.bytes
         else cachedChunk.bytes.copyOf(cachedChunk.size)
-        log.info("Uploading {}", fileChunk.id)
+        log.info("Uploading {} ({})", fileChunk.id, workerId)
         var response: ContentMessage<DocumentContent>? = null
         var attempts = 0
         val configuredAttempts = config.uploadRetries
@@ -134,7 +134,7 @@ class TelegramRemoteClient : RemoteClient, KoinComponent {
             coroutineScope.launch {
                 while (true) {
                     val uploadRequest = uploadChannel.receive()
-                    val fileId = performUpload(uploadRequest.fileChunk, uploadRequest.cachedChunk)
+                    val fileId = performUpload(uploadRequest.fileChunk, uploadRequest.cachedChunk, i)
                     uploadRequest.response.complete(fileId)
                 }
             }
