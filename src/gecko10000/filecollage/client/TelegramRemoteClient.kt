@@ -16,9 +16,11 @@ import gecko10000.filecollage.model.cache.Priority
 import gecko10000.filecollage.model.index.FileChunk
 import gecko10000.filecollage.util.log
 import gecko10000.telefuse.config.JsonConfigWrapper
+import korlibs.time.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -59,8 +61,12 @@ class TelegramRemoteClient : RemoteClient, KoinComponent {
 
     private val uploadChannel = Channel<UploadRequest>()
 
-    private fun Throwable.isRetriableError(messages: Set<String>): Boolean {
-        if (this is TooMuchRequestsException) return true
+    private suspend fun Throwable.isRetriableError(messages: Set<String>): Boolean {
+        if (this is TooMuchRequestsException) {
+            println("Sleeping ${this.retryAfter.seconds} seconds for tempban")
+            delay(this.retryAfter.seconds.seconds)
+            return true
+        }
         if (this is IOException) return true
         if (this is UnresolvedAddressException) return true
         if (this.cause is EOFException) return true
