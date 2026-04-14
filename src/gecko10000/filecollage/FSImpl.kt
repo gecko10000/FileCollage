@@ -57,6 +57,40 @@ class FSImpl : FuseStubFS(), KoinComponent {
         }
     }
 
+    override fun link(oldPath: String, newPath: String): Int {
+        try {
+            log.debug("Creating hard link from {} to {}", oldPath, newPath)
+            val node = directoryDAO.lookupNode(oldPath)
+            if (node == null) {
+                log.debug("Node {} does not exist.", oldPath)
+                return -ErrorCodes.ENOENT()
+            }
+            if (node !is File) {
+                log.debug("Node {} is not a file.", oldPath)
+                return -ErrorCodes.EISDIR()
+            }
+            if (directoryDAO.lookupNode(newPath) != null) {
+                log.debug("File {} exists, not overwriting.", newPath)
+                return -ErrorCodes.EEXIST()
+            }
+            val parent = directoryDAO.lookupParent(newPath)
+            if (parent == null) {
+                log.debug("Parent of {} doesn't exist.", newPath)
+                return -ErrorCodes.ENOENT()
+            }
+            val newName = PathUtil.getNodeName(newPath)
+            val newNode = (node as FileImpl).copy(
+                id = UUID.randomUUID(),
+                name = newName
+            )
+            directoryDAO.addNode(parent, newNode)
+            return 0
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            throw ex
+        }
+    }
+
     override fun getattr(path: String, stat: FileStat): Int {
         try {
             log.debug("Getting attributes for {}", path)
@@ -68,6 +102,10 @@ class FSImpl : FuseStubFS(), KoinComponent {
             stat.st_mode.set(node.permissions)
             if (node is File) {
                 stat.st_size.set(node.size)
+                stat.st_nlink.set(1) // not accurate but needed for hard links
+            } else if (node is Dir) {
+                stat.st_size.set(4096)
+                stat.st_nlink.set(2 + node.children.size)
             }
             stat.st_gid.set(node.gid)
             stat.st_uid.set(node.uid)
